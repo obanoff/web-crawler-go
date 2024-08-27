@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"net/url"
 	"os"
+	"strconv"
 
 	"github.com/obanoff/web-crawler-go/utilities"
 )
@@ -14,9 +15,31 @@ func main() {
 		os.Exit(1)
 	}
 
+	// default values
+	var (
+		pool     uint8 = 10
+		maxPages uint  = 50
+	)
+
 	if len(os.Args) > 2 {
-		fmt.Println("too many arguments provided")
-		os.Exit(1)
+		if len(os.Args) > 4 {
+			fmt.Println("too many arguments provided")
+			os.Exit(1)
+		}
+
+		v1, err := strconv.Atoi(os.Args[2])
+		if err != nil || v1 < 0 {
+			fmt.Println("negative thread pool")
+			os.Exit(1)
+		}
+
+		v2, err := strconv.Atoi(os.Args[3])
+		if err != nil || v2 < 0 {
+			fmt.Println("negative max pages")
+			os.Exit(1)
+		}
+
+		pool, maxPages = uint8(v1), uint(v2)
 	}
 
 	url, err := url.Parse(os.Args[1])
@@ -32,16 +55,15 @@ func main() {
 
 	fmt.Printf("starting crawl of: %s\n", url.String())
 
-	pages := make(map[string]int)
+	cfg := utilities.NewConfig(url, pool, maxPages)
 
-	err = utilities.CrawlPage(url.String(), url.String(), pages)
+	err = cfg.CrawlPage(url.String())
 	if err != nil {
 		fmt.Println(err)
 		// os.Exit(1)
 	}
 
-	for k, v := range pages {
-		fmt.Printf("%s: %v\n", k, v)
-	}
+	cfg.Wg.Wait()
 
+	cfg.PrintReport()
 }
